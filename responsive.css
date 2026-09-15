@@ -1,0 +1,147 @@
+/* Jerarquía compartida entre consulta, revisión y recuento. */
+.missing-overview { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; margin-top:18px; }
+.missing-overview article { background:white; border:1px solid #d5dfd8; border-radius:12px; padding:18px 20px; }
+.missing-overview article:first-child { background:#eef3f8; border-color:#c8d6e3; }
+.missing-overview span { font-size:13px; font-weight:650; }
+.missing-overview strong { display:block; font-size:36px; margin:6px 0; font-variant-numeric:tabular-nums; }
+.missing-overview p { font-size:12px; color:#576860; line-height:1.5; }
+.control-help { font-size:12px; color:#52665b; line-height:1.6; margin:8px 0; }
+.control-help summary, .scope-note summary { cursor:pointer; width:fit-content; min-height:32px; padding:6px 0; font-weight:650; }
+.control-help p { padding:4px 0 10px; max-width:90ch; }
+summary:focus-visible { outline:3px solid #1b8271; outline-offset:3px; }
+.scope-note summary { font-size:12px; }
+@media screen {
+  .single-branch .branches { grid-template-columns:minmax(0,1fr); }
+  .single-branch .roster .branch { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .single-branch .roster .branch > :not(.sector) { grid-column:1 / -1; }
+  .single-branch .sector { margin:12px; padding:0 16px 8px; background:#fbfcfb; border:1px solid #e3e9e5; border-radius:10px; }
+  .view-tabs { border-bottom:1px solid #d5dfd8; }
+  .view-tabs button { flex:1; min-height:52px; border-radius:10px; }
+  .view-tabs span { background:#e8eeea; color:#20352f; border-radius:20px; padding:2px 7px; }
+  .view-tabs button[aria-pressed="true"] span { background:#365b50; color:white; }
+  .check-setup { background:white; border:1px solid #d5dfd8; padding:14px 16px; border-radius:12px; }
+  #cerrar-control { margin-left:auto; color:#863e29; border-color:#d9bbaf; }
+  .check-person:hover { background:#eef5f0; }
+  .check-person-info strong { letter-spacing:.1px; }
+  .sector-heading { border-bottom:1px solid #e5ebe6; }
+  .scope-note { margin:10px 0 16px; padding:10px 14px; }
+  .macro-filter { box-shadow:0 2px 8px #173d3606; }
+}
+@media screen and (max-width:760px) {
+  .single-branch .roster .branch { grid-template-columns:minmax(0,1fr); }
+  .single-branch .sector { margin:8px; padding:0 12px 6px; }
+  .missing-overview { grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
+  .missing-overview article:first-child { grid-column:1 / -1; }
+  .missing-overview article { padding:12px; }
+  .missing-overview strong { font-size:30px; }
+}
+@media print { .control-help, .scope-note details { display:none; } .macro-filter { margin:12px 0; } .macro-filter select { border:0; } }
+/* Adaptación de las tres vistas, sin ocultar contenido desbordado. */
+@media screen {
+  .macro-filter { display:flex; align-items:center; gap:20px; background:white;
+    border:1px solid #cbd6ce; border-left:4px solid #216549; border-radius:10px;
+    padding:14px 18px; margin:20px 0 10px; }
+  .macro-filter > div { flex:1 1 260px; min-width:0; }
+  .macro-filter { flex-wrap:wrap; }
+  .macro-filter p { flex:1 1 260px; }
+  .macro-filter label { display:block; font-size:13px; font-weight:750; margin-bottom:6px; }
+  .macro-filter select { width:100%; background:white; padding:10px 12px; }
+  .macro-filter p { font-size:13px; color:#52665b; line-height:1.5; }
+  html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+  main, section, .filters > *, .check-setup > *, .branch-head > *,
+  .overview > *, .check-totals > *, .topbar > * { min-width: 0; }
+  input:not([type="checkbox"]), select { max-width: 100%; }
+  .connection { white-space: normal; overflow-wrap: anywhere; }
+  .brand { min-width: 0; }
+  .brand-icon, .status-dot { flex-shrink: 0; }
+  .scope-note p, .check-status, .check-explanation, .branch-foot,
+  .branch-head p, .freshness > *, .chip { overflow-wrap: anywhere; }
+  .filters { grid-template-columns: minmax(0, 1fr) auto; }
+  .check-setup { flex-wrap: wrap; }
+  .check-setup > div { flex: 1 1 260px; }
+  .view-tabs { position: sticky; top: 0; z-index: 5; background: #f3f5f3;
+    padding: 8px 0; margin: 10px 0; }
+  .branch-count { max-width: 38%; }
+  .branch-count span { overflow-wrap: anywhere; }
+  .check-label { width: 100%; }
+  .check-label input { width: 28px; height: 28px; min-height: 28px; }
+}
+
+@media screen and (max-width: 960px) {
+  .branches { grid-template-columns: minmax(0, 1fr); }
+  .check-setup > div { max-width: none; }
+  .view-tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .view-tabs button { min-width: 0; padding: 10px 8px; font-size: 13px;
+    white-space: normal; line-height: 1.35; }
+  .view-tabs button:last-child { grid-column: auto; }
+  .person-name, .check-person-info strong { font-size: 16px; }
+}
+
+@media screen and (max-width: 600px) {
+  .macro-filter { display:block; padding:12px; margin-top:14px; }
+  .macro-filter select { font-size:16px; min-height:48px; }
+  .macro-filter p { margin-top:8px; font-size:12px; }
+  .macro-filter > div + div { margin-top:12px; }
+  main { padding: 18px max(12px, env(safe-area-inset-left)); }
+  .topbar { padding: 12px; gap: 8px; flex-wrap: wrap; }
+  .brand { font-size: 10px; letter-spacing: .5px; gap: 8px; }
+  .brand small { font-size: 11px; }
+  .connection { font-size: 11px; max-width: 45%; padding: 7px 9px; }
+  h1 { font-size: clamp(24px, 6.5vw, 30px); line-height: 1.2; }
+  .page-heading { gap: 12px; }
+  .subtitle { font-size: 13px; }
+  .actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; }
+  .actions button { padding: 10px 8px; min-width: 0; font-size: 13px; }
+  .view-tabs { gap: 5px; }
+  .view-tabs button { font-size: 12px; min-height: 52px; }
+  .view-tabs span { margin-left: 2px; }
+  .scope-note { padding: 12px; margin: 14px 0 8px; gap: 8px; }
+  .scope-note strong { font-size: 13px; }
+  .overview { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .overview .main-stat { grid-column: 1 / -1; }
+  .overview article { padding: 12px; }
+  .overview .main-stat strong { font-size: 38px; }
+  .freshness { gap: 5px; margin: 10px 0 18px; }
+  .roster-heading { align-items: flex-start; flex-direction: column; gap: 8px; }
+  .filters { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  .search-field { grid-column: auto; }
+  .filters label, .check-setup label, .add-person > label { font-size: 14px; }
+  .filters input, .filters select, .check-setup input, .add-person > input {
+    width: 100%; font-size: 16px; min-height: 48px;
+  }
+  .filters > button { width: 100%; }
+  .pending-toggle { padding: 10px 12px; border: 1px solid #cbd6ce;
+    border-radius: 9px; background: white; }
+  .pending-toggle input { flex: 0 0 24px; width: 24px !important; height: 24px;
+    min-height: 24px !important; }
+  .check-setup { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  .check-setup > div { width: 100%; }
+  .check-setup button { width: 100%; min-height: 48px; }
+  .check-totals { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .check-totals article:first-child { grid-column: 1 / -1; display: flex;
+    align-items: center; gap: 14px; }
+  .check-totals article { padding: 12px 14px; }
+  .check-totals strong { font-size: 32px; }
+  .check-totals span { font-size: 13px; line-height: 1.4; }
+  .branch-head { padding: 14px; gap: 10px; }
+  .branch-head h3 { font-size: 20px; }
+  .branch-count strong { font-size: 32px; }
+  .person, .check-label { padding: 14px 0; gap: 10px; }
+  .person-name, .check-person-info strong { font-size: 16px; }
+  .check-person-info span, .check-person-info small { font-size: 12px; line-height: 1.5; }
+  .check-people { padding: 0 12px; }
+  .add-person { padding: 14px; }
+  .add-person summary { font-size: 15px; }
+  .add-row { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; padding: 16px 0; }
+  .add-row strong { font-size: 16px; }
+  .add-row p { font-size: 13px; margin-top: 4px; }
+  .add-row button { width: 100%; min-height: 48px; font-size: 14px; }
+}
+
+@media screen and (max-width: 360px) {
+  .brand small { display: none; }
+  .connection { max-width: 42%; font-size: 10px; }
+  .view-tabs button { font-size: 11px; padding: 8px 5px; }
+  .person { align-items: flex-start; }
+  .person-time { padding-top: 2px; }
+}
