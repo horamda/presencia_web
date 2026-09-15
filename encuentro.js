@@ -4,7 +4,8 @@
   if (!base) return;
   const $ = selector => document.querySelector(selector);
   let state = null, busy = false, polling = false, received = 0, failure = '', notice = '', mutationEpoch = 0;
-  const normalize = value => String(value).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  let subview = 'actual', celebratedControl = null, wasStale = false;
+  const normalize = value => String(value).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
   const node = (tag, text, cls) => {
     const el = document.createElement(tag);
     if (text !== undefined) el.textContent = text;
@@ -12,6 +13,25 @@
     return el;
   };
   const date = value => new Date(value).toLocaleString('es-AR', {timeZone:'America/Argentina/Buenos_Aires', hour12:false});
+  const formatDuration = ms => {
+    const total = Math.max(0, Math.floor(ms / 1000));
+    const pad = n => String(n).padStart(2, '0');
+    const h = Math.floor(total / 3600), m = Math.floor((total % 3600) / 60), s = total % 60;
+    return (h > 0 ? h + ':' + pad(m) : m) + ':' + pad(s);
+  };
+  const describeAction = accion => ({
+    iniciar: 'Inició el control', cerrar: 'Cerró el control', encontrado: 'Confirmó presente',
+    pendiente: 'Marcó pendiente', incorporar: 'Incorporó a la lista',
+  }[accion] || accion);
+  const renderActivity = (target, cambios, personas, disponibles) => {
+    const byClave = new Map([...personas, ...disponibles].map(person => [person.clave, person]));
+    target.replaceChildren();
+    if (!cambios.length) { target.append(node('li', 'Sin actividad registrada todavía.')); return; }
+    cambios.forEach(change => {
+      const who = change.clave ? (byClave.get(change.clave)?.nombre || change.clave) : '';
+      target.append(node('li', date(change.momento) + ' · ' + change.responsable + ' · ' + describeAction(change.accion) + (who ? ' · ' + who : '')));
+    });
+  };
   const signature = value => value?.control ? value.control.id + ':' + value.control.revision : 'empty';
   const branchKey = person => JSON.stringify([person.empresa, person.sucursal]);
   const matchesModality = person => !$('#modalidad').value || normalize(person.modalidad) === $('#modalidad').value;
@@ -22,11 +42,21 @@
 
   function status() {
     const stale = Boolean(failure) || (received && Date.now() - received > 15000);
+    if (stale && !wasStale && window.presenciaSonido) window.presenciaSonido.beep(320, 260);
+    wasStale = Boolean(stale);
     $('#encuentro-status').className = stale ? 'check-status error' : 'check-status';
     $('#encuentro-status').textContent = stale
       ? (failure || 'No se pudo actualizar el control.') + ' Las confirmaciones mostradas pueden estar desactualizadas.'
       : busy ? 'Guardando en el servidor…' : received ? (notice ? notice + ' · ' : '') + 'Última sincronización: ' + date(new Date(received).toISOString()) + '. Consulta cada 5 segundos.' : 'Consultando el control guardado…';
     $('#check-content').classList.toggle('check-stale', Boolean(stale));
+    if (state?.control) {
+      const start = Date.parse(state.control.inicio);
+      const end = state.control.cierre ? Date.parse(state.control.cierre) : Date.now();
+      $('#control-tiempo').hidden = false;
+      $('#control-tiempo').textContent = (state.control.cierre ? 'Duración del control: ' : 'Tiempo transcurrido: ') + formatDuration(end - start);
+    } else {
+      $('#control-tiempo').hidden = true;
+    }
     if (document.body.dataset.view === 'encuentro') {
       $('#connection').className = 'connection ' + (stale ? 'stale' : received ? 'live' : '');
       $('#connection-label').textContent = stale ? 'Control sin actualizar' : received ? 'Control sincronizado' : 'Conectando';
@@ -44,11 +74,18 @@
     $('.check-totals').hidden = !state?.control;
     if (!state?.control) {
       $('#control-fecha').textContent = 'No hay un recuento guardado. Iniciar crea un control para todas las sucursales, sin aplicar los filtros de asistencia.';
+      $('#actividad-reciente').hidden = true;
       status(); return;
     }
     $('#control-fecha').textContent = (active ? 'Control abierto' : 'Control cerrado · solo lectura') +
       ' · Inicio: ' + date(state.control.inicio) + ' · Responsable inicial: ' + state.control.responsable +
       ' · Lista tomada: ' + date(state.control.fuente) + (state.control.cierre ? ' · Cierre: ' + date(state.control.cierre) : '');
+    $('#actividad-reciente').hidden = false;
+    renderActivity($('#actividad-lista'), state.cambios || [], state.personas, state.disponibles);
+    if (active && state.totales.total > 0 && state.totales.pendientes === 0 && celebratedControl !== state.control.id) {
+      celebratedControl = state.control.id;
+      if (window.presenciaSonido) window.presenciaSonido.chime();
+    }
     const branches = new Map();
     [...state.personas, ...state.disponibles].forEach(person => branches.set(branchKey(person), {nombre:person.sucursal, empresa:person.empresa}));
     document.dispatchEvent(new CustomEvent('encuentro-sucursales', {detail:[...branches.values()]}));
@@ -66,6 +103,12 @@
     $('#check-alcance').textContent = 'Totales según sucursal y modalidad: ' + scoped.length + ' personas. El control completo conserva ' + state.totales.total + ' personas y ' + state.totales.pendientes + ' pendientes.';
     const people = scoped.filter(person =>
       (!pending || !person.encontrado) && normalize(person.nombre + ' ' + person.sector).includes(query));
+    const visiblePending = people.filter(person => !person.encontrado);
+    const bulkButton = $('#confirmar-visibles');
+    bulkButton.disabled = busy || Boolean(state.control.cierre) || !visiblePending.length;
+    bulkButton.textContent = visiblePending.length
+      ? 'Confirmar ' + visiblePending.length + (visiblePending.length === 1 ? ' persona visible' : ' personas visibles')
+      : 'Confirmar todos los visibles';
     const groups = new Map();
     people.forEach(person => { const key = branchKey(person); if (!groups.has(key)) groups.set(key, []); groups.get(key).push(person); });
     const fragment = document.createDocumentFragment();
@@ -162,6 +205,130 @@
       if (failure) { const error = failure; await poll(true); notice = error; status(); }
     }
   }
+
+  async function bulkConfirm() {
+    if (busy || !state?.control || state.control.cierre) return;
+    const selected = $('#sucursal').value, query = normalize($('#check-buscar').value), pending = $('#solo-pendientes').checked;
+    const scoped = state.personas.filter(person => (!selected || branchKey(person) === selected) && matchesModality(person));
+    const targets = scoped.filter(person => !person.encontrado &&
+      (!pending || !person.encontrado) && normalize(person.nombre + ' ' + person.sector).includes(query));
+    if (!targets.length) return;
+    const actor = $('#responsable').value.trim();
+    if (actor.length < 2) { notice = 'Ingresá tu nombre como responsable antes de guardar.'; status(); $('#responsable').focus(); return; }
+    if (!window.confirm('Se va a confirmar a ' + targets.length + (targets.length === 1 ? ' persona visible' : ' personas visibles') + ' como localizadas en el punto de encuentro. ¿Continuar?')) return;
+    const controlId = state.control.id;
+    mutationEpoch += 1; busy = true; notice = ''; render();
+    let done = 0, conflicts = 0;
+    for (const person of targets) {
+      $('#encuentro-status').textContent = 'Confirmando ' + (done + conflicts + 1) + ' de ' + targets.length + '…';
+      try {
+        const response = await fetch(base + '/marcar', {method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({responsable:actor, control_id:controlId, clave:person.clave, encontrado:true, revision:person.revision})});
+        const result = await response.json();
+        if (response.ok) { state = result; done += 1; } else { conflicts += 1; }
+      } catch (_) { conflicts += 1; }
+    }
+    busy = false;
+    notice = 'Se confirmaron ' + done + (done === 1 ? ' persona' : ' personas') +
+      (conflicts ? ' · ' + conflicts + (conflicts === 1 ? ' persona cambió' : ' personas cambiaron') + ' mientras tanto: actualizá y reintentá' : '') +
+      ' · ' + date(new Date().toISOString());
+    received = Date.now(); failure = '';
+    render();
+    await poll(true);
+  }
+
+  async function loadHistory() {
+    $('#historial-detalle').hidden = true;
+    $('#historial-status').textContent = 'Consultando el historial…';
+    $('#historial-list').replaceChildren();
+    try {
+      const response = await fetch(base + '/historial', {cache:'no-store'});
+      if (!response.ok) throw new Error('No se pudo leer el historial.');
+      const rows = await response.json();
+      if (!rows.length) { $('#historial-status').textContent = 'Todavía no hay controles cerrados guardados.'; return; }
+      $('#historial-status').textContent = rows.length + (rows.length === 1 ? ' control cerrado guardado.' : ' controles cerrados guardados.');
+      const fragment = document.createDocumentFragment();
+      rows.forEach(row => {
+        const card = node('article', undefined, 'branch');
+        const head = node('div', undefined, 'branch-head');
+        const title = node('div');
+        title.append(node('h3', 'Recuento del ' + date(row.inicio)), node('p', 'Responsable inicial: ' + row.responsable));
+        const counter = node('div', undefined, 'branch-count');
+        counter.append(node('strong', row.encontrados + '/' + row.total), node('span', row.pendientes + ' pendientes al cierre'));
+        head.append(title, counter); card.append(head);
+        const meta = node('div', undefined, 'branch-meta');
+        meta.append(node('span', 'Cierre: ' + date(row.cierre), 'chip'),
+          node('span', 'Duración: ' + formatDuration(Date.parse(row.cierre) - Date.parse(row.inicio)), 'chip'));
+        card.append(meta);
+        const foot = node('div', undefined, 'branch-foot');
+        const button = node('button', 'Ver detalle y bitácora'); button.type = 'button';
+        button.addEventListener('click', () => loadHistoryDetail(row.id));
+        foot.append(button); card.append(foot);
+        fragment.append(card);
+      });
+      $('#historial-list').replaceChildren(fragment);
+    } catch (_) {
+      $('#historial-status').textContent = 'No se pudo leer el historial guardado.';
+    }
+  }
+
+  async function loadHistoryDetail(id) {
+    $('#historial-status').textContent = 'Cargando el detalle…';
+    try {
+      const response = await fetch(base + '/historial/' + encodeURIComponent(id), {cache:'no-store'});
+      if (!response.ok) throw new Error('No se pudo leer el control.');
+      const detail = await response.json();
+      if (!detail.control) throw new Error('El control ya no está disponible.');
+      $('#historial-status').textContent = '';
+      $('#historial-detalle').hidden = false;
+      $('#historial-detalle-titulo').textContent = 'Recuento del ' + date(detail.control.inicio);
+      $('#historial-detalle-info').textContent = 'Responsable inicial: ' + detail.control.responsable +
+        ' · Cierre: ' + date(detail.control.cierre) +
+        ' · Duración: ' + formatDuration(Date.parse(detail.control.cierre) - Date.parse(detail.control.inicio)) +
+        ' · ' + detail.totales.encontrados + ' de ' + detail.totales.total + ' confirmados, ' + detail.totales.pendientes + ' pendientes al cierre.';
+      const branches = new Map();
+      detail.personas.forEach(person => { const key = branchKey(person); if (!branches.has(key)) branches.set(key, []); branches.get(key).push(person); });
+      const fragment = document.createDocumentFragment();
+      branches.forEach(persons => {
+        const card = node('article', undefined, 'branch');
+        const head = node('div', undefined, 'branch-head');
+        const title = node('div'); title.append(node('h3', persons[0].sucursal), node('p', persons[0].empresa));
+        head.append(title); card.append(head);
+        const list = node('ul', undefined, 'people check-people');
+        persons.forEach(person => {
+          const row = node('li', undefined, 'check-person' + (person.encontrado ? ' found' : ''));
+          const text = node('span', undefined, 'check-person-info');
+          text.append(node('strong', person.nombre), node('span', person.sector + ' · ' + person.modalidad));
+          text.append(node('small', person.encontrado ? 'Confirmado por ' + person.responsable + ' · ' + date(person.confirmado) : 'Pendiente al cerrar el control'));
+          row.append(text); list.append(row);
+        });
+        card.append(list); fragment.append(card);
+      });
+      $('#historial-detalle-lista').replaceChildren(fragment);
+      renderActivity($('#historial-detalle-cambios'), detail.cambios || [], detail.personas, detail.disponibles);
+      $('#historial-csv').onclick = () => window.presenciaCSV(
+        'punto-de-encuentro-' + id + '.csv',
+        ['Sucursal', 'Empresa', 'Sector', 'Nombre', 'Modalidad', 'Confirmado', 'Responsable', 'Hora de confirmación'],
+        detail.personas.map(person => [person.sucursal, person.empresa, person.sector, person.nombre, person.modalidad,
+          person.encontrado ? 'Sí' : 'No', person.responsable || '', person.confirmado ? date(person.confirmado) : ''])
+      );
+    } catch (error) {
+      $('#historial-status').textContent = error.message || 'No se pudo leer el control.';
+    }
+  }
+
+  function setSubview(view) {
+    subview = view;
+    $('#sub-actual').setAttribute('aria-pressed', String(view === 'actual'));
+    $('#sub-historial').setAttribute('aria-pressed', String(view === 'historial'));
+    $('#encuentro-actual').hidden = view !== 'actual';
+    $('#historial-panel').hidden = view !== 'historial';
+    if (view === 'historial') loadHistory();
+  }
+  $('#sub-actual').addEventListener('click', () => setSubview('actual'));
+  $('#sub-historial').addEventListener('click', () => setSubview('historial'));
+  $('#historial-volver').addEventListener('click', () => { $('#historial-detalle').hidden = true; loadHistory(); });
+  $('#confirmar-visibles').addEventListener('click', bulkConfirm);
   $('#iniciar-control').addEventListener('click', () => action('iniciar'));
   $('#cerrar-control').addEventListener('click', () => {
     if (!state?.control) return;
@@ -172,11 +339,11 @@
   document.addEventListener('macro-sucursal', () => { renderPeople(); renderAvailable(); });
   $('#solo-pendientes').addEventListener('change', renderPeople);
   $('#agregar-buscar').addEventListener('input', renderAvailable);
-  document.addEventListener('abrir-encuentro', () => poll(true));
+  document.addEventListener('abrir-encuentro', () => { if (subview === 'actual') poll(true); });
   window.addEventListener('offline', () => { failure = 'Este dispositivo no tiene conexión. No se pueden guardar confirmaciones.'; status(); });
   window.addEventListener('online', () => poll(true));
-  document.addEventListener('visibilitychange', () => { if (!document.hidden && document.body.dataset.view === 'encuentro') poll(true); });
-  setInterval(() => { if (document.body.dataset.view === 'encuentro' && !document.hidden) poll(); }, 5000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && document.body.dataset.view === 'encuentro' && subview === 'actual') poll(true); });
+  setInterval(() => { if (document.body.dataset.view === 'encuentro' && subview === 'actual' && !document.hidden) poll(); }, 5000);
   setInterval(status, 1000);
   poll(true);
 })();

@@ -88,6 +88,26 @@ class ServerTests(unittest.TestCase):
         self.assertEqual(self.request('/config.json')[0], 404)
         self.assertIsNone(self.request('/api/encuentro')[1]['control'])
 
+    def test_history_and_detail_endpoints(self):
+        self.assertEqual(self.request('/api/encuentro/historial')[1], [])
+        code, state = self.request('/api/encuentro/iniciar', {'responsable': 'Operador A'})
+        control_id = state['control']['id']
+        self.request('/api/encuentro/marcar', dict(responsable='Operador A', control_id=control_id, clave='1', revision=0, encontrado=True))
+        self.request('/api/encuentro/cerrar', dict(responsable='Operador A', control_id=control_id, revision=1))
+        code, history = self.request('/api/encuentro/historial')
+        self.assertEqual(code, 200)
+        self.assertEqual(len(history), 1)
+        self.assertEqual(history[0]['id'], control_id)
+        self.assertEqual(history[0]['encontrados'], 1)
+        self.assertEqual(history[0]['pendientes'], 1)
+        code, detail = self.request('/api/encuentro/historial/' + control_id)
+        self.assertEqual(code, 200)
+        self.assertEqual(detail['control']['id'], control_id)
+        self.assertEqual([c['accion'] for c in detail['cambios']], ['cerrar', 'encontrado', 'iniciar'])
+        code, missing = self.request('/api/encuentro/historial/no-existe')
+        self.assertEqual(code, 200)
+        self.assertIsNone(missing['control'])
+
 
 if __name__ == '__main__':
     unittest.main()

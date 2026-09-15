@@ -67,6 +67,41 @@ class EncuentroTests(unittest.TestCase):
         with self.store.connection() as db:
             self.assertEqual(db.execute("SELECT COUNT(*) FROM controles").fetchone()[0], 2)
 
+    def test_state_includes_recent_changes(self):
+        self.store.update(self.control_id, "a", True, 0, "A")
+        state = self.store.get()
+        self.assertEqual([c["accion"] for c in state["cambios"]], ["encontrado", "iniciar"])
+        self.assertEqual(state["cambios"][0]["clave"], "a")
+
+    def test_history_lists_only_closed_controls_newest_first(self):
+        self.assertEqual(self.store.history(), [])
+        self.store.update(self.control_id, "a", True, 0, "A")
+        first_id = self.control_id
+        self.store.close(first_id, 1, "A")
+        second = self.store.start(source(), "B")
+        second_id = second["control"]["id"]
+        self.store.update(second_id, "a", True, 0, "B")
+        self.store.update(second_id, "b", True, 0, "B")
+        self.store.close(second_id, 2, "B")
+        history = self.store.history()
+        self.assertEqual([row["id"] for row in history], [second_id, first_id])
+        self.assertEqual(history[0]["encontrados"], 2)
+        self.assertEqual(history[0]["pendientes"], 0)
+        self.assertEqual(history[1]["encontrados"], 1)
+        self.assertEqual(history[1]["pendientes"], 1)
+
+    def test_detail_reads_a_specific_non_latest_control(self):
+        first_id = self.control_id
+        self.store.close(first_id, 0, "A")
+        second = self.store.start(source(), "B")
+        self.assertNotEqual(second["control"]["id"], first_id)
+        detail = self.store.detail(first_id)
+        self.assertEqual(detail["control"]["id"], first_id)
+        self.assertIsNotNone(detail["control"]["cierre"])
+
+    def test_detail_of_unknown_control_returns_empty_control(self):
+        self.assertEqual(self.store.detail("no-existe"), {"control": None})
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -8,9 +8,9 @@
 </head>
 <body data-endpoint="/api/presencia" data-checklist="/api/encuentro">
 <a class="skip" href="#sucursales">Ir a la lista de personas</a>
-<header class="topbar"><div class="brand"><span class="brand-icon" aria-hidden="true">P</span><span>CONTROL DE PRESENCIA<small>Consulta para el equipo</small></span></div><div class="connection" id="connection"><span class="status-dot" aria-hidden="true"></span><span id="connection-label">Conectando</span></div></header>
+<header class="topbar"><div class="brand"><span class="brand-icon" aria-hidden="true">P</span><span>CONTROL DE PRESENCIA<small>Consulta para el equipo</small></span></div><div class="topbar-actions"><button id="alternar-sonido" type="button" class="icon-toggle" aria-pressed="true" aria-label="Silenciar alertas sonoras">🔊</button><button id="alternar-texto" type="button" class="icon-toggle" aria-pressed="false" aria-label="Activar texto grande para ver de lejos">Aa</button><div class="connection" id="connection"><span class="status-dot" aria-hidden="true"></span><span id="connection-label">Conectando</span></div></div></header>
 <main>
-<section class="page-heading"><div><p class="eyebrow">PERSONAS · SUCURSALES · SECTORES</p><h1>Personas con ingreso sin salida</h1><p class="subtitle">Consultá nombres, sectores y la validación de ubicación de cada ingreso.</p></div><div class="actions"><button id="actualizar" class="primary" type="button">↻ Actualizar</button><button id="imprimir" type="button">Imprimir lista</button></div></section>
+<section class="page-heading"><div><p class="eyebrow">PERSONAS · SUCURSALES · SECTORES</p><h1>Personas con ingreso sin salida</h1><p class="subtitle">Consultá nombres, sectores y la validación de ubicación de cada ingreso.</p></div><div class="actions"><button id="actualizar" class="primary" type="button">↻ Actualizar</button><button id="csv" type="button">Descargar CSV</button><button id="imprimir" type="button">Imprimir lista</button></div></section>
 <section class="macro-filter" aria-label="Filtro general de sucursal"><div><label for="sucursal">Sucursal · filtro general</label><select id="sucursal"><option value="">Todas las sucursales</option></select></div><div><label for="modalidad">Modalidad laboral</label><select id="modalidad"><option value="">Todas las modalidades</option><option value="presencial">Presencial</option><option value="remoto">Remoto</option><option value="hibrido">Híbrido</option><option value="sin definir">Sin definir</option></select></div><p id="macro-alcance">Aplica a los totales, las tres vistas y el personal para incorporar.</p></section>
 
 <nav class="view-tabs" aria-label="Tipo de control">
@@ -38,18 +38,39 @@
 </section>
 <section id="encuentro-panel" hidden aria-labelledby="encuentro-title">
 <div class="roster-heading"><div><h2 id="encuentro-title">Recuento en el punto de encuentro</h2><p>Marcá únicamente a las personas que confirmás presentes en el punto de encuentro.</p></div></div>
+<nav class="encuentro-subview" aria-label="Vista del punto de encuentro">
+<button id="sub-actual" type="button" aria-pressed="true">Control actual</button>
+<button id="sub-historial" type="button" aria-pressed="false">Historial de recuentos</button>
+</nav>
+<div id="encuentro-actual">
 <div class="check-totals" hidden aria-label="Recuento según sucursal y modalidad"><article><strong id="check-pendientes">—</strong><span>Pendientes de localizar</span></article><article><strong id="check-encontrados">—</strong><span>Confirmados en el punto</span></article><article><strong id="check-total">—</strong><span>Personas incluidas</span></article></div>
+<p id="control-tiempo" class="control-timer" hidden role="status" aria-live="polite"></p>
 <div class="check-setup"><div><label for="responsable">Tu nombre como responsable</label><input id="responsable" maxlength="80" minlength="2" placeholder="Nombre y apellido" autocomplete="name"></div><button id="iniciar-control" type="button" class="primary">Iniciar recuento</button><button id="cerrar-control" type="button" hidden>Cerrar control completo</button></div>
 <details class="control-help"><summary>Alcance del recuento y del cierre</summary><p>Iniciar crea una lista fija de ingresos sin salida de todas las sucursales, incluidos los de ubicación a verificar. El filtro cambia lo que ves. Cerrar finaliza el control de todas las sucursales. Las tildes no cambian las fichadas.</p></details>
 <p id="encuentro-status" role="status" aria-live="polite">Consultando el control guardado…</p>
 <details class="control-help"><summary>Datos del control guardado</summary><p id="control-fecha" class="check-explanation"></p></details>
+<details id="actividad-reciente" class="control-help" hidden><summary>Actividad reciente del control</summary><ul id="actividad-lista" class="activity-list"></ul></details>
 <div id="check-content" hidden>
 
 <p id="check-alcance" class="check-explanation">Los totales corresponden a la sucursal seleccionada.</p>
 <div class="filters"><div class="search-field"><label for="check-buscar">Buscar persona o sector</label><input type="search" id="check-buscar" placeholder="Nombre, apellido o sector"></div><label class="pending-toggle"><input type="checkbox" id="solo-pendientes">Solo pendientes</label></div>
+<div class="bulk-row"><button id="confirmar-visibles" type="button" disabled>Confirmar todos los visibles</button></div>
 <p id="check-visible" class="check-explanation"></p>
 <div id="check-list" class="branches"></div>
 <details id="incorporar-panel" class="add-person"><summary>Incorporar personal que no estaba en la lista inicial</summary><p>Respeta la sucursal seleccionada arriba. Incluye personal sin ingreso y con salida al iniciar el control. Incorporarlo lo deja pendiente: la presencia se confirma con la tilde.</p><label for="agregar-buscar">Buscar en el personal restante</label><input type="search" id="agregar-buscar" placeholder="Nombre, apellido o sector"><div id="agregar-list"></div></details>
+</div>
+</div>
+<div id="historial-panel" hidden>
+<p id="historial-status" role="status" aria-live="polite">Consultando el historial…</p>
+<div id="historial-list" class="branches"></div>
+<div id="historial-detalle" hidden>
+<button id="historial-volver" type="button">← Volver al historial</button>
+<h3 id="historial-detalle-titulo"></h3>
+<p id="historial-detalle-info" class="check-explanation"></p>
+<button id="historial-csv" type="button">Descargar CSV del cierre</button>
+<div id="historial-detalle-lista" class="branches"></div>
+<details class="control-help"><summary>Bitácora de cambios</summary><ul id="historial-detalle-cambios" class="activity-list"></ul></details>
+</div>
 </div>
 </section>
 <footer><strong>Alcance de esta lista</strong><p>Empleados activos con ingreso sin salida en el día de Argentina. No incluye visitas, contratistas ni turnos iniciados ayer. Una salida sin fichar puede mantener a una persona en la lista.</p><p>Actualización automática cada 30 segundos. Ante una emergencia, contrastar con el recuento de personas en el punto de encuentro.</p></footer>

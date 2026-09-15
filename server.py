@@ -55,6 +55,19 @@ def make_handler(backend_url, store=None):
                 except sqlite3.Error:
                     self.reply(503, b'{"error":"No se pudo leer el control guardado"}')
                 return
+            if request.path == "/api/encuentro/historial":
+                try:
+                    self.reply(200, json.dumps(store.history(), ensure_ascii=False).encode("utf-8"))
+                except sqlite3.Error:
+                    self.reply(503, b'{"error":"No se pudo leer el historial de controles"}')
+                return
+            if request.path.startswith("/api/encuentro/historial/"):
+                control_id = request.path.rsplit("/", 1)[-1]
+                try:
+                    self.reply(200, json.dumps(store.detail(control_id), ensure_ascii=False).encode("utf-8"))
+                except sqlite3.Error:
+                    self.reply(503, b'{"error":"No se pudo leer el control guardado"}')
+                return
             if request.path in STATIC:
                 filename, content_type = STATIC[request.path]
                 self.reply(200, (ROOT / filename).read_bytes(), content_type)

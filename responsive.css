@@ -61,7 +61,7 @@ summary:focus-visible { outline:3px solid #1b8271; outline-offset:3px; }
   .check-setup > div { flex: 1 1 260px; }
   .view-tabs { position: sticky; top: 0; z-index: 5; background: #f3f5f3;
     padding: 8px 0; margin: 10px 0; }
-  .branch-count { max-width: 38%; }
+  .branch-count { flex-shrink: 0; max-width: 60%; }
   .branch-count span { overflow-wrap: anywhere; }
   .check-label { width: 100%; }
   .check-label input { width: 28px; height: 28px; min-height: 28px; }
@@ -90,8 +90,9 @@ summary:focus-visible { outline:3px solid #1b8271; outline-offset:3px; }
   h1 { font-size: clamp(24px, 6.5vw, 30px); line-height: 1.2; }
   .page-heading { gap: 12px; }
   .subtitle { font-size: 13px; }
-  .actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; }
-  .actions button { padding: 10px 8px; min-width: 0; font-size: 13px; }
+  .actions { display: flex; flex-wrap: wrap; gap: 8px; width: 100%; }
+  .actions button { flex: 1 1 28%; padding: 10px 8px; min-width: 90px; font-size: 13px; }
+  .bulk-row button { width: 100%; min-height: 48px; }
   .view-tabs { gap: 5px; }
   .view-tabs button { font-size: 12px; min-height: 52px; }
   .view-tabs span { margin-left: 2px; }
@@ -144,4 +145,87 @@ summary:focus-visible { outline:3px solid #1b8271; outline-offset:3px; }
   .view-tabs button { font-size: 11px; padding: 8px 5px; }
   .person { align-items: flex-start; }
   .person-time { padding-top: 2px; }
+}
+
+/* Celular en horizontal u otra ventana baja: el header y las tabs no deben comerse toda la altura útil. */
+@media screen and (max-height: 480px) and (max-width: 900px) {
+  .topbar { min-height: 52px; padding: 8px 16px; }
+  .view-tabs { position: static; padding: 4px 0; margin: 6px 0; }
+  .view-tabs button { min-height: 40px; padding: 6px 8px; }
+  .encuentro-subview { margin: 8px 0 12px; }
+  main { padding-top: 12px; padding-bottom: 12px; }
+  .page-heading { gap: 8px; }
+  .scope-note { margin: 8px 0; padding: 8px 12px; }
+  .filters input, .filters select, .check-setup input { min-height: 40px; }
+  .activity-list { max-height: 120px; }
+}
+
+/* Modo oscuro automático (prefers-color-scheme). Va al final porque este archivo se carga
+   después de presencia.css y debe ganar la cascada para los mismos selectores. */
+@media screen and (prefers-color-scheme: dark) {
+  :root { color: #e7ede9; background: #121613; --muted: #9fb2a6; --line: #31413a; --green: #2f8467; }
+  body { background: #121613; color: #e7ede9; }
+  button, input, select { border-color: #3c4b43; background: #1b2320; color: #e7ede9; }
+  button:hover { background: #243029; }
+  .skip { background: #1b2320; color: #e7ede9; }
+  .topbar { background: #171e1a; border-bottom-color: #2a352e; }
+  .brand small { color: #9fb2a6; }
+  .connection { background: #1d2622; color: #cfe0d6; }
+  .status-dot { background: #5f7268; }
+  .connection.live { background: #173225; color: #7fd8ab; }
+  .connection.live .status-dot { background: #37b57e; }
+  .connection.stale { background: #331c15; color: #f0a98c; }
+  .connection.stale .status-dot { background: #d9613b; }
+  h1, h2, h3, h4 { color: #eef4f0; }
+  .eyebrow { color: #8fae9c; }
+  .subtitle, .roster-heading p, .date-label, .freshness, .branch-head p,
+  .overview p, .check-explanation, .add-row p, .sector-heading h4,
+  .person-state, .person-time, .branch-foot, .check-person-info span { color: #9fb2a6; }
+  .scope-note { background: #2a2313; border-color: #5a481f; color: #e8cf9a; }
+  .notice-icon { border-color: #c79a4c; }
+  .overview article { background: #1b2320; border-color: #2a352e; }
+  .overview .uncertain-stat { background: #2a2313; border-color: #5a481f; }
+  .freshness.stale { background: #331c15; border-color: #7a3d29; color: #f0a98c; }
+  .filters input, .filters select, .check-setup input, .add-person > input { background: #1b2320; color: #e7ede9; }
+  .branch { background: #171e1a; border-color: #2a352e; }
+  .branch-head { background: #1c2a22; border-bottom-color: #2a352e; }
+  .branch:nth-child(even) .branch-head { background: #1a2430; }
+  .chip { background: #1c2a22; color: #a9d6bd; border-color: #2c4234; }
+  .chip.uncertain { background: #2a2313; color: #e3c07f; border-color: #5a481f; }
+  .person { border-bottom-color: #25302a; }
+  .badge { background: #1c2a22; color: #a9d6bd; }
+  .badge.uncertain { background: #2a2313; color: #e3c07f; }
+  .empty-branch, .empty-state, .loading-state { background: #171e1a; border-color: #3a463e; color: #9fb2a6; }
+  .stale-data .branch { border-color: #5a3a2a; }
+  .stale-data .branch-head { border-top-color: #8a5236; }
+  footer { border-top-color: #2a352e; color: #9fb2a6; }
+  footer strong { color: #d5e3da; }
+  noscript { background: #331c15; color: #f0a98c; }
+  .view-tabs { background: #121613; }
+  .view-tabs button, .encuentro-subview button { background: #1b2320; border-color: #33413a; color: #e7ede9; }
+  .view-tabs button[aria-pressed="true"], .encuentro-subview button[aria-pressed="true"] { background: #2f8467; border-color: #2f8467; color: #05130d; }
+  .view-tabs button[aria-pressed="true"] span { background: #143025; color: #cdeee0; }
+  .check-status { background: #173225; border-color: #2c4234; color: #8fdcb1; }
+  .check-status.error { background: #331c15; border-color: #5a3a2a; color: #f0a98c; }
+  .check-totals article { background: #1b2320; border-color: #2a352e; }
+  .check-totals article:first-child { background: #2a2313; border-color: #5a481f; }
+  .check-totals article:nth-child(2) { background: #173225; border-color: #2c4234; }
+  .check-person-info small { color: #e0b46a; }
+  .found .check-person-info small { color: #7fd8ab; }
+  .found { background: #152119; }
+  .check-person:hover { background: #1b2621; }
+  .add-person { background: #171e1a; border-color: #2a352e; }
+  .add-row { border-bottom-color: #25302a; }
+  #cerrar-control { color: #e79a80; border-color: #6a3d2f; }
+  .control-timer { color: #cdeee0; }
+  .activity-list li { border-bottom-color: #25302a; }
+  .macro-filter { background: #171e1a; border-color: #33413a; border-left-color: #2f8467; }
+  .macro-filter select { background: #1b2320; color: #e7ede9; }
+  .macro-filter p { color: #9fb2a6; }
+  .missing-overview article { background: #1b2320; border-color: #2a352e; }
+  .missing-overview article:first-child { background: #1a2430; border-color: #2c3c50; }
+  .missing-overview p { color: #9fb2a6; }
+  .control-help, .single-branch .sector { color: #9fb2a6; }
+  .single-branch .sector { background: #171b19; border-color: #2a352e; }
+  .pending-toggle { background: #1b2320; border-color: #33413a; }
 }

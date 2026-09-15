@@ -66,14 +66,38 @@ class EncuentroStore:
                        confirmado=row["confirmado"], revision=row["revision"]) for row in rows]
         included = [p for p in people if p["incluido"]]
         found = sum(p["encontrado"] for p in included)
+        changes = db.execute(
+            "SELECT clave,accion,responsable,momento FROM cambios WHERE control=? ORDER BY id DESC LIMIT 200",
+            (control["id"],),
+        ).fetchall()
         return {"control": dict(control), "personas": included,
                 "disponibles": [p for p in people if not p["incluido"]],
-                "totales": {"total": len(included), "encontrados": found, "pendientes": len(included) - found}}
+                "totales": {"total": len(included), "encontrados": found, "pendientes": len(included) - found},
+                "cambios": [dict(row) for row in changes]}
 
     def get(self):
         with self.connection() as db:
             db.execute("BEGIN")
             return self._state(db)
+
+    def detail(self, control_id):
+        with self.connection() as db:
+            db.execute("BEGIN")
+            return self._state(db, control_id)
+
+    def history(self, limit=50):
+        with self.connection() as db:
+            db.execute("BEGIN")
+            rows = db.execute("""
+                SELECT c.id, c.inicio, c.cierre, c.responsable,
+                    (SELECT COUNT(*) FROM personas p WHERE p.control = c.id AND p.incluido = 1) AS total,
+                    (SELECT COUNT(*) FROM personas p WHERE p.control = c.id AND p.incluido = 1 AND p.encontrado = 1) AS encontrados
+                FROM controles c
+                WHERE c.cierre IS NOT NULL
+                ORDER BY c.cierre DESC
+                LIMIT ?
+            """, (limit,)).fetchall()
+            return [dict(row, pendientes=row["total"] - row["encontrados"]) for row in rows]
 
     def start(self, source, actor):
         with self.connection() as db:
