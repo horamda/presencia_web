@@ -19,6 +19,25 @@ const branchKey = branch => JSON.stringify([branch.empresa, branch.nombre]);
 const matchesModality = person => !$('#modalidad').value || normalize(person.modalidad) === $('#modalidad').value;
 try { $('#modalidad').value = sessionStorage.getItem('presencia-modalidad') || ''; } catch (_) {}
 
+// Tema claro/oscuro: por defecto sigue al sistema (prefers-color-scheme); se puede forzar.
+let theme = 'auto';
+try { theme = localStorage.getItem('presencia-tema') || 'auto'; } catch (_) {}
+const THEME_ICONS = {auto: '🌓', light: '☀️', dark: '🌙'};
+const THEME_LABELS = {auto: 'Tema: automático (según el sistema)', light: 'Tema: claro', dark: 'Tema: oscuro'};
+function applyTheme() {
+  if (theme === 'auto') delete document.documentElement.dataset.theme;
+  else document.documentElement.dataset.theme = theme;
+  const button = $('#alternar-tema');
+  button.textContent = THEME_ICONS[theme];
+  button.setAttribute('aria-label', THEME_LABELS[theme] + ' · tocar para cambiar');
+}
+applyTheme();
+$('#alternar-tema').addEventListener('click', () => {
+  theme = theme === 'auto' ? 'light' : theme === 'light' ? 'dark' : 'auto';
+  try { localStorage.setItem('presencia-tema', theme); } catch (_) {}
+  applyTheme();
+});
+
 // Sonido de alerta compartido con encuentro.js (cargado después de este script).
 let soundOn = true;
 try { soundOn = localStorage.getItem('presencia-sonido') !== '0'; } catch (_) {}
